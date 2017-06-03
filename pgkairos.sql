@@ -1,4 +1,3 @@
-
 DROP TABLE IF EXISTS parameters;
 CREATE TABLE parameters (
     parameter text NOT NULL,
@@ -287,7 +286,7 @@ $$ language plpythonu;
 CREATE OR REPLACE FUNCTION snap()
 RETURNS boolean AS $$
 	enabled = plpy.execute("SELECT get_parameter('enable') x",1)[0]['x']
-    if enabled:
+	if enabled:
 		request = "insert into kpg_stat_database (select now() snap, * from pg_stat_database)"
 		plpy.notice(request);
 		plpy.execute(request);
@@ -295,18 +294,21 @@ RETURNS boolean AS $$
 	else: return False
 $$ language plpythonu;
 
-CREATE OR REPLACE FUNCTION snap_detailed(x integer, y integer)
+CREATE OR REPLACE FUNCTION snap_detailed()
 RETURNS boolean AS $$
 	enabled = plpy.execute("SELECT get_parameter('enable') x",1)[0]['x']
-	snaptime = plpy.execute("SELECT now() x",1)[0]['x']
-	ply.notice('Taking ' + str(numsnaps) + ' snapshots every ' + str(interval) + ' seconds...')
 	import time
-	request = "insert into kpg_stat_activity (select now() snap, * from pg_stat_activity)"
-	for i in range(y):
+	if enabled:
+		request = "insert into kpg_stat_activity (select now() snap, * from pg_stat_activity)"
+		plpy.notice(request);
 		plpy.execute(request)
-		time.sleep(x)
 		return True
 	else: return False
+$$ language plpythonu;
+
+CREATE OR REPLACE FUNCTION isolation()
+RETURNS text AS $$
+	return plpy.execute("select current_setting('transaction_isolation')")
 $$ language plpythonu;
 
 CREATE OR REPLACE FUNCTION purge()
@@ -351,15 +353,15 @@ RETURNS text AS $$
 		if exptype == 'full': request = 'select * from ' + view
 		if exptype == 'oneday': request = "select * from " + view + " where snap between '" + p1 + "' and '" + p2 + "'"
 		cursor = plpy.cursor(request)
-        recordset = 0
+	        recordset = 0
 		while True:
-            obj = dict(collection=view, data=[], desc=schema[view])
+			obj = dict(collection=view, data=[], desc=schema[view])
 			rows = cursor.fetch(num_rows_per_file)
 			if not rows: break
 			for row in rows: obj['data'].append(row)
-            member = view + '_' + str(recordset)
-            plpy.notice("Writing file: " + member + " ...")
-            zip.writestr(member, json.dumps(obj, sort_keys=True, indent=4))
+			member = view + '_' + str(recordset)
+			plpy.notice("Writing file: " + member + " ...")
+			zip.writestr(member, json.dumps(obj, sort_keys=True, indent=4))
 			recordset += 1
 	zip.close()
 	return outfile
