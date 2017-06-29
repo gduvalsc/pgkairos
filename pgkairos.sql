@@ -208,7 +208,7 @@ RETURNS text AS $$
 $$ language plpythonu;
 
 DROP TABLE IF EXISTS kpg_stat_activity;
-CREATE TABLE kpg_stat_activity AS SELECT current_timestamp snap, * FROM pg_stat_activity LIMIT 0;
+CREATE TABLE kpg_stat_activity AS SELECT current_timestamp snap, 1.0 snap_frequency, * FROM pg_stat_activity LIMIT 0;
 CREATE OR REPLACE VIEW vkpg_stat_activity as 
 	select	to_char(snap, 'YYYYMMDDHH24MISSMS')  "timestamp", hash(query) hash, * from kpg_stat_activity;
 
@@ -294,12 +294,12 @@ RETURNS boolean AS $$
 	else: return False
 $$ language plpythonu;
 
-CREATE OR REPLACE FUNCTION snap_detailed()
+CREATE OR REPLACE FUNCTION snap_detailed(frequency integer)
 RETURNS boolean AS $$
 	enabled = plpy.execute("SELECT get_parameter('enable') x",1)[0]['x']
 	import time
 	if enabled:
-		request = "insert into kpg_stat_activity (select now() snap, * from pg_stat_activity)"
+		request = "insert into kpg_stat_activity (select now() snap, " + str(frequency) + ", * from pg_stat_activity)"
 		plpy.notice(request);
 		plpy.execute(request)
 		return True
@@ -339,7 +339,7 @@ RETURNS text AS $$
 	schema['vpsutil_net_io_counters'] = dict(timestamp="text", snap="text", iface="text", bytes_sent="real", bytes_recv="real", packets_sent="real", packets_recv="real", errin="real", errout="real", dropin="real", dropout="real" )
 	schema['vpsutil_processes'] = dict(timestamp="text", snap="text", pid="text", create_time="text", pname="text", cmdline="text", usr="real", sys="real", num_threads="real", status="text", rss="real", vms="real", shared="real", texts="real", lib="real", datas="real", dirty="real" )
 	
-	schema['vkpg_stat_activity'] = dict(timestamp="text", application_name="text", backend_start="text", backend_xid="text", backend_xmin="text", client_addr="text", client_hostname="text", client_port="text", datid="text", datname="text", pid="text", hash="text", query="text", query_start="text", snap="text", state="text", state_change="text", usename="text", usesysid="text", waiting="text", xact_start="text")
+	schema['vkpg_stat_activity'] = dict(timestamp="text", snap_frequency="real", application_name="text", backend_start="text", backend_xid="text", backend_xmin="text", client_addr="text", client_hostname="text", client_port="text", datid="text", datname="text", pid="text", hash="text", query="text", query_start="text", snap="text", state="text", state_change="text", usename="text", usesysid="text", waiting="text", xact_start="text")
 	schema['vkpg_stat_database'] = dict(timestamp="text", snap="text", datid="text", datname="text", numbackends="real", xact_commit="real", xact_rollback="real", blks_read="real", blks_hit="real", tup_returned="real", tup_fetched="real", tup_inserted="real", tup_updated="real", tup_deleted="real", conflicts="real", temp_files="real", temp_bytes="real", deadlocks="real", blk_read_time="real", blk_write_time="real", stats_reset="text")
 
 	directory = plpy.execute("SELECT get_parameter('directory') x",1)[0]['x']
