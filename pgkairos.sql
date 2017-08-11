@@ -1,3 +1,4 @@
+CREATE USER kairos;
 DROP TABLE IF EXISTS parameters;
 CREATE TABLE parameters (
     parameter text NOT NULL,
@@ -56,9 +57,10 @@ CREATE OR REPLACE VIEW vpsutil_cpu_times as select * from  (
 		(t2.guest - t1.guest) / extract(epoch from (t2.snap - t1.snap)) guest
 	from t t1, t t2 
 	where t1.row_number + 1 = t2.row_number) as foo;
+GRANT SELECT ON vpsutil_cpu_times TO kairos;
 
-DROP TABLE IF EXISTS psutil_virtual_memory;
-CREATE TABLE psutil_virtual_memory(
+DROP TABLE IF EXISTS psutil_virt_memory;
+CREATE TABLE psutil_virt_memory(
 	snap timestamp, 
 	total bigint,
 	available bigint,
@@ -69,8 +71,8 @@ CREATE TABLE psutil_virtual_memory(
 	inactive bigint,
 	buffers bigint,
 	cached bigint);
-CREATE OR REPLACE VIEW vpsutil_virtual_memory as select * from  (
-	with t as (select *, row_number() over (order by snap) from psutil_virtual_memory)
+CREATE OR REPLACE VIEW vpsutil_virt_memory as select * from  (
+	with t as (select *, row_number() over (order by snap) from psutil_virt_memory)
 	select	to_char(t2.snap, 'YYYYMMDDHH24MISSMS')  "timestamp", 
 		t2.snap snap,
 		(t2.total + t1.total) / 2 total,
@@ -84,6 +86,8 @@ CREATE OR REPLACE VIEW vpsutil_virtual_memory as select * from  (
 		(t2.cached + t1.cached) / 2 cached
 	from t t1, t t2 
 	where t1.row_number + 1 = t2.row_number) as foo;
+GRANT SELECT ON vpsutil_virt_memory TO kairos;
+
 
 DROP TABLE IF EXISTS psutil_swap_memory;
 CREATE TABLE psutil_swap_memory(
@@ -106,6 +110,7 @@ CREATE OR REPLACE VIEW vpsutil_swap_memory as select * from  (
 		(t2.sout - t1.sout) / extract(epoch from (t2.snap - t1.snap)) sout
 	from t t1, t t2 
 	where t1.row_number + 1 = t2.row_number) as foo;
+GRANT SELECT ON vpsutil_swap_memory TO kairos;
 
 DROP TABLE IF EXISTS psutil_disk_io_counters;
 CREATE TABLE psutil_disk_io_counters(
@@ -130,6 +135,7 @@ CREATE OR REPLACE VIEW vpsutil_disk_io_counters as select * from  (
 		(t2.write_time - t1.write_time) / extract(epoch from (t2.snap - t1.snap)) write_time
 	from t t1, t t2 
 	where t2.disk = t1.disk and t1.row_number + 1 = t2.row_number) as foo;
+GRANT SELECT ON vpsutil_disk_io_counters TO kairos;
 
 DROP TABLE IF EXISTS psutil_net_io_counters;
 CREATE TABLE psutil_net_io_counters(
@@ -158,6 +164,7 @@ CREATE OR REPLACE VIEW vpsutil_net_io_counters as select * from  (
 		(t2.dropout - t1.dropout) / extract(epoch from (t2.snap - t1.snap)) dropout
 	from t t1, t t2 
 	where t2.iface = t1.iface and t1.row_number + 1 = t2.row_number) as foo;
+GRANT SELECT ON vpsutil_net_io_counters TO kairos;
 
 DROP TABLE IF EXISTS psutil_processes;
 CREATE TABLE psutil_processes(
@@ -198,6 +205,7 @@ CREATE OR REPLACE VIEW vpsutil_processes as select * from  (
 		(t2.dirty + t1.dirty) / 2 dirty
 	from t t1, t t2 
 	where t2.pid = t1.pid and t2.create_time = t1.create_time and t1.row_number + 1 = t2.row_number) as foo;
+GRANT SELECT ON vpsutil_processes TO kairos;
 
 CREATE OR REPLACE FUNCTION hash(query text)
 RETURNS text AS $$
@@ -211,6 +219,7 @@ DROP TABLE IF EXISTS kpg_stat_activity;
 CREATE TABLE kpg_stat_activity AS SELECT current_timestamp snap, 1 snap_frequency, * FROM pg_stat_activity LIMIT 0;
 CREATE OR REPLACE VIEW vkpg_stat_activity as 
 	select	to_char(snap, 'YYYYMMDDHH24MISSMS')  "timestamp", hash(query) hash, * from kpg_stat_activity;
+GRANT SELECT ON vkpg_stat_activity TO kairos;
 
 DROP TABLE IF EXISTS kpg_stat_database;
 CREATE TABLE kpg_stat_database AS SELECT current_timestamp snap, * FROM pg_stat_database LIMIT 0;
@@ -239,6 +248,7 @@ CREATE OR REPLACE VIEW vkpg_stat_database as select * from  (
 		(t2.xact_rollback - t1.xact_rollback) / extract(epoch from (t2.snap - t1.snap)) xact_rollback
 	from t t1, t t2 
 	where t1.datname= t2.datname and t1.row_number + 1 = t2.row_number) as foo;
+GRANT SELECT ON vkpg_stat_database TO kairos;
 
 CREATE OR REPLACE FUNCTION snap_system()
 RETURNS boolean AS $$
@@ -255,7 +265,7 @@ RETURNS boolean AS $$
 			plpy.notice(request);
 			plpy.execute(request)
 			x = psutil.virtual_memory()
-			request = "insert into psutil_virtual_memory values ('" + snaptime + "', " + str(x.total) + ", " + str(x.available) + ", " + str(x.percent) + ", " + str(x.used) + ", " + str(x.free) + ", " + str(x.active) + ", " + str(x.inactive) + ", " + str(x.buffers) + ", " + str(x.cached) + ")"
+			request = "insert into psutil_virt_memory values ('" + snaptime + "', " + str(x.total) + ", " + str(x.available) + ", " + str(x.percent) + ", " + str(x.used) + ", " + str(x.free) + ", " + str(x.active) + ", " + str(x.inactive) + ", " + str(x.buffers) + ", " + str(x.cached) + ")"
 			plpy.notice(request);
 			plpy.execute(request)
 			x = psutil.swap_memory()
@@ -313,7 +323,7 @@ $$ language plpythonu;
 
 CREATE OR REPLACE FUNCTION purge()
 RETURNS boolean AS $$
-	views = ['vpsutil_cpu_times', 'vpsutil_virtual_memory', 'vpsutil_swap_memory', 'vpsutil_disk_io_counters', 'vpsutil_net_io_counters', 'vpsutil_processes', 'vkpg_stat_activity', 'vkpg_stat_database']
+	views = ['vpsutil_cpu_times', 'vpsutil_virt_memory', 'vpsutil_swap_memory', 'vpsutil_disk_io_counters', 'vpsutil_net_io_counters', 'vpsutil_processes', 'vkpg_stat_activity', 'vkpg_stat_database']
 	tables = [view[1:] for view in views]
 	enabled = plpy.execute("SELECT get_parameter('enable') x",1)[0]['x']
 	retention = plpy.execute("SELECT get_parameter('retention') x",1)[0]['x']
@@ -329,11 +339,11 @@ $$ language plpythonu;
 CREATE OR REPLACE FUNCTION export(exptype text, p1 timestamp with time zone, p2 timestamp with time zone)
 RETURNS text AS $$
         import socket, zipfile, datetime, json
-	views = ['vpsutil_cpu_times', 'vpsutil_virtual_memory', 'vpsutil_swap_memory', 'vpsutil_disk_io_counters', 'vpsutil_net_io_counters', 'vpsutil_processes', 'vkpg_stat_activity', 'vkpg_stat_database']
+	views = ['vpsutil_cpu_times', 'vpsutil_virt_memory', 'vpsutil_swap_memory', 'vpsutil_disk_io_counters', 'vpsutil_net_io_counters', 'vpsutil_processes', 'vkpg_stat_activity', 'vkpg_stat_database']
 
 	schema=dict()
 	schema['vpsutil_cpu_times'] = dict(timestamp="text", snap="text", nbcpus="real", usr="real", sys="real", nice="real", idle="real", iowait="real", irq="real", softirq="real", steal="real", guest="real" )
-	schema['vpsutil_virtual_memory'] = dict(timestamp="text", snap="text", total="real", available="real", percent="real", used="real", free="real", active="real", inactive="real", buffers="real", cached="real" )
+	schema['vpsutil_virt_memory'] = dict(timestamp="text", snap="text", total="real", available="real", percent="real", used="real", free="real", active="real", inactive="real", buffers="real", cached="real" )
 	schema['vpsutil_swap_memory'] = dict(timestamp="text", snap="text", total="real", used="real", free="real", percent="real", sin="real", sout="real" )
 	schema['vpsutil_disk_io_counters'] = dict(timestamp="text", snap="text", disk="text", read_count="real", write_count="real", read_bytes="real", write_bytes="real", read_time="real", write_time="real" )
 	schema['vpsutil_net_io_counters'] = dict(timestamp="text", snap="text", iface="text", bytes_sent="real", bytes_recv="real", packets_sent="real", packets_recv="real", errin="real", errout="real", dropin="real", dropout="real" )

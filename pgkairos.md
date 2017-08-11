@@ -107,6 +107,17 @@ A typical "detailed" collect every 5 seconds triggered by cron is:
 
 cron cannot trigger something with a periodicity less than one minute. But note the usage of "watch" with the "-n" paramater as well as usage of "flock" to avoid several execution of the same command at the same time. The periodicity must also be given as a parameter of the "snap_detailed" function.
 
+# Purging data
+
+The "parameters" table contains a prameter to define data retention within the "kairos" database. By default, this parameter defines a data retention of 15 days. 
+
+Purging data is not automatically triggered. To be effective, "purging" must be trigerred by a scheduler like this (example with cron):
+
+```
+0 4 * * * psql -d kairos -c "select purge()"
+```
+Here data older than the retention parameter will be removed from the kairos database at 04h00 AM every day.
+
 # Exporting data
 
 Export can be triggered manually or through a scheduler like cron on a regularly basis (typically once a day).
