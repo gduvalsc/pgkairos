@@ -286,7 +286,8 @@ RETURNS boolean AS $$
 				p = psutil.Process(pid)
 				c = p.cpu_times()
 				m = p.memory_info_ex()
-				request = "insert into psutil_processes values ('" + snaptime + "', '" + str(p.pid) + "', to_timestamp(" + str(p.create_time()) + "), '" + p.name() + "', '" + p.cmdline()[0] + "', " + str(c.user) + ", " + str(c.system) + ", '" + p.status() + "', " + str(p.num_threads()) + ", " + str(m.rss) + ", " + str(m.vms) + ", " + str(m.shared) + ", " + str(m.text) + ", " + str(m.lib) + ", " + str(m.data) + ", " + str(m.dirty) + ")"
+				cmdline = p.cmdline()[0] if len(p.cmdline()) > 0 else ''
+				request = "insert into psutil_processes values ('" + snaptime + "', '" + str(p.pid) + "', to_timestamp(" + str(p.create_time()) + "), '" + p.name() + "', '" + cmdline + "', " + str(c.user) + ", " + str(c.system) + ", '" + p.status() + "', " + str(p.num_threads()) + ", " + str(m.rss) + ", " + str(m.vms) + ", " + str(m.shared) + ", " + str(m.text) + ", " + str(m.lib) + ", " + str(m.data) + ", " + str(m.dirty) + ")"
 				plpy.notice(request)
 				plpy.execute(request)
 		return True
