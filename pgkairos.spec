@@ -1,5 +1,5 @@
 %define pkgname pgkairos
-%define pkgversion 1.0
+%define pkgversion pkgversion
 
 Name:		%{pkgname}
 Version:	%{pkgversion}
@@ -7,7 +7,8 @@ Release:	1%{?dist}
 Summary:	PostgreSQL extension to collect run time statistics and export them to Kairos
 Group:		Applications
 License:	GPLv3
-Requires:	postgresql96-server postgresql96-plpython python-psutil
+Requires:	python-psutil
+Prefix:     /usr/local/share/postgresql/extension
 Source0:	%{name}-%{version}.tar.gz
 
 %description
@@ -27,13 +28,13 @@ pwd
 %build
 
 %install
-mkdir -p $RPM_BUILD_ROOT/usr/pgsql-9.6/share/extension
-install -p -m 755 *.sql $RPM_BUILD_ROOT/usr/pgsql-9.6/share/extension
-install -p -m 755 *.control $RPM_BUILD_ROOT/usr/pgsql-9.6/share/extension
+mkdir -p $RPM_BUILD_ROOT%{prefix}
+install -p -m 755 *.sql $RPM_BUILD_ROOT%{prefix}
+install -p -m 755 *.control $RPM_BUILD_ROOT%{prefix}
 
 %files
 %defattr(-, root, root)
-/usr/pgsql-9.6/share/extension/%{name}.control
-/usr/pgsql-9.6/share/extension/%{name}--%{version}.sql
+%{prefix}/%{name}.control
+%{prefix}/%{name}--%{version}.sql
 
 %changelog

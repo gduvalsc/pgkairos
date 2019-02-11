@@ -2,15 +2,15 @@
 
 In the PostgreSQL universe, data collection is done by adding an extension to a PostgreSQL database.
 
-The software is delivered as  a "rpm" archive containing the extension. After installation the software will be downloaded in the directory "/usr/share/postgresql/9.6/extension".
+The software is delivered as  a "rpm" archive containing the extension. The location where the software must be be installed can be varying from one installation to another depending on the PostgreSQL installation. On recent PostgreSQL versions, the location can be known by using "pg_config --sharedir". The extension must be installed in the "extension" directory contained in the directory displayed by "pg_config --sharedir".
 
 A typical installation on a centos system is:
 
 ```
-$ rpm --ignoreos -i https://github.com/gduvalsc/pgkairos/raw/master/pgkairos-0.5-1.noarch.rpm
+$ rpm --ignoreos --prefix=$(pg_config --sharedir)/extension -i https://github.com/gduvalsc/pgkairos/raw/master/pgkairos-x.y-1.noarch.rpm
 ```
 
-In this example, pgkairos is installed in version "0.5"
+In this example, pgkairos is installed in version "x.y"
 
 After that step, the extension is available. You can check the availability by running:
 
