@@ -211,9 +211,9 @@ CREATE OR REPLACE FUNCTION hash(query text)
 RETURNS text AS $$
 	import hashlib
 	m = hashlib.md5()
-	m.update(query)
+	m.update(query.encode())
 	return m.hexdigest()
-$$ language plpythonu;
+$$ language plpython3u;
 
 DROP TABLE IF EXISTS kpg_stat_activity;
 CREATE TABLE kpg_stat_activity AS SELECT current_timestamp snap, 1 snap_frequency, * FROM pg_stat_activity LIMIT 0;
@@ -292,7 +292,7 @@ RETURNS boolean AS $$
 				plpy.execute(request)
 		return True
 	else: return False
-$$ language plpythonu;
+$$ language plpython3u;
 
 CREATE OR REPLACE FUNCTION snap()
 RETURNS boolean AS $$
@@ -303,7 +303,7 @@ RETURNS boolean AS $$
 		plpy.execute(request);
 		return True
 	else: return False
-$$ language plpythonu;
+$$ language plpython3u;
 
 CREATE OR REPLACE FUNCTION snap_detailed(frequency integer)
 RETURNS boolean AS $$
@@ -315,12 +315,12 @@ RETURNS boolean AS $$
 		plpy.execute(request)
 		return True
 	else: return False
-$$ language plpythonu;
+$$ language plpython3u;
 
 CREATE OR REPLACE FUNCTION isolation()
 RETURNS text AS $$
 	return plpy.execute("select current_setting('transaction_isolation')")
-$$ language plpythonu;
+$$ language plpython3u;
 
 CREATE OR REPLACE FUNCTION purge()
 RETURNS boolean AS $$
@@ -335,11 +335,11 @@ RETURNS boolean AS $$
 			plpy.execute(request)
 		return True
 	else: return False
-$$ language plpythonu;
+$$ language plpython3u;
 
 CREATE OR REPLACE FUNCTION export(exptype text, p1 timestamp with time zone, p2 timestamp with time zone)
 RETURNS text AS $$
-        import socket, zipfile, datetime, json
+	import socket, zipfile, datetime, json
 	views = ['vpsutil_cpu_times', 'vpsutil_virt_memory', 'vpsutil_swap_memory', 'vpsutil_disk_io_counters', 'vpsutil_net_io_counters', 'vpsutil_processes', 'vkpg_stat_activity', 'vkpg_stat_database']
 
 	schema=dict()
@@ -363,7 +363,7 @@ RETURNS text AS $$
 		if exptype == 'full': request = 'select * from ' + view
 		if exptype == 'oneday': request = "select * from " + view + " where snap between '" + p1 + "' and '" + p2 + "'"
 		cursor = plpy.cursor(request)
-	        recordset = 0
+		recordset = 0
 		while True:
 			obj = dict(collection=view, data=[], desc=schema[view])
 			rows = cursor.fetch(num_rows_per_file)
@@ -375,7 +375,7 @@ RETURNS text AS $$
 			recordset += 1
 	zip.close()
 	return outfile
-$$ language plpythonu;
+$$ language plpython3u;
 
 CREATE OR REPLACE FUNCTION export_full()
 RETURNS text AS $$

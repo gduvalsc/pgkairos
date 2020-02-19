@@ -7,7 +7,7 @@ Release:	1%{?dist}
 Summary:	PostgreSQL extension to collect run time statistics and export them to Kairos
 Group:		Applications
 License:	GPLv3
-Requires:	python-psutil
+Requires:	python3
 Prefix:     /usr/local/share/postgresql/extension
 Source0:	%{name}-%{version}.tar.gz
 
