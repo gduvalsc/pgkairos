@@ -254,7 +254,7 @@ CREATE OR REPLACE FUNCTION snap_system()
 RETURNS boolean AS $$
 	enabled = plpy.execute("SELECT get_parameter('enable') x",1)[0]['x']
 	get_system = plpy.execute("SELECT get_parameter('system') x",1)[0]['x']
-	snaptime = plpy.execute("SELECT now() x",1)[0]['x']
+	snaptime = plpy.execute("SELECT to_timestamp(to_char(now(), 'YYYYMMDDHH24MI'), 'YYYYMMDDHH24MI') x",1)[0]['x']
 	try: import psutil
 	except: get_system = False
 	if enabled:
@@ -298,7 +298,7 @@ CREATE OR REPLACE FUNCTION snap()
 RETURNS boolean AS $$
 	enabled = plpy.execute("SELECT get_parameter('enable') x",1)[0]['x']
 	if enabled:
-		request = "insert into kpg_stat_database (select now() snap, * from pg_stat_database)"
+		request = "insert into kpg_stat_database (select to_timestamp(to_char(now(), 'YYYYMMDDHH24MI'),'YYYYMMDDHH24MI') snap, * from pg_stat_database)"
 		plpy.notice(request);
 		plpy.execute(request);
 		return True
@@ -310,7 +310,7 @@ RETURNS boolean AS $$
 	enabled = plpy.execute("SELECT get_parameter('enable') x",1)[0]['x']
 	import time
 	if enabled:
-		request = "insert into kpg_stat_activity (select now() snap, " + str(frequency) + ", * from pg_stat_activity)"
+		request = "insert into kpg_stat_activity (select to_timestamp(to_char(now(), 'YYYYMMDDHH24MISS'),'YYYYMMDDHH24MISS') snap, " + str(frequency) + ", * from pg_stat_activity)"
 		plpy.notice(request);
 		plpy.execute(request)
 		return True
