@@ -40,7 +40,8 @@ CREATE TABLE psutil_cpu_times(
 	irq real,
 	softirq real,
 	steal real,
-	guest real);
+	guest real,
+	primary key(snap));
 CREATE OR REPLACE VIEW vpsutil_cpu_times as select * from  (
 	with t as (select *, row_number() over (order by snap) from psutil_cpu_times)
 	select	to_char(t2.snap, 'YYYYMMDDHH24MISSMS')  "timestamp", 
@@ -70,7 +71,8 @@ CREATE TABLE psutil_virt_memory(
 	active bigint,
 	inactive bigint,
 	buffers bigint,
-	cached bigint);
+	cached bigint,
+	primary key(snap));
 CREATE OR REPLACE VIEW vpsutil_virt_memory as select * from  (
 	with t as (select *, row_number() over (order by snap) from psutil_virt_memory)
 	select	to_char(t2.snap, 'YYYYMMDDHH24MISSMS')  "timestamp", 
@@ -97,7 +99,8 @@ CREATE TABLE psutil_swap_memory(
 	free bigint,
 	percent real,
 	sin real,
-	sout real);
+	sout real,
+	primary key (snap));
 CREATE OR REPLACE VIEW vpsutil_swap_memory as select * from  (
 	with t as (select *, row_number() over (order by snap) from psutil_swap_memory)
 	select	to_char(t2.snap, 'YYYYMMDDHH24MISSMS')  "timestamp", 
@@ -121,7 +124,8 @@ CREATE TABLE psutil_disk_io_counters(
 	read_bytes bigint,
 	write_bytes bigint,
 	read_time bigint,
-	write_time bigint);
+	write_time bigint,
+	primary key(snap, disk));
 CREATE OR REPLACE VIEW vpsutil_disk_io_counters as select * from  (
 	with t as (select *, row_number() over (partition by disk order by snap) from psutil_disk_io_counters)
 	select	to_char(t2.snap, 'YYYYMMDDHH24MISSMS')  "timestamp", 
@@ -148,7 +152,8 @@ CREATE TABLE psutil_net_io_counters(
 	errin bigint,
 	errout bigint,
 	dropin bigint,
-	dropout bigint);
+	dropout bigint,
+	primary key(snap, iface));
 CREATE OR REPLACE VIEW vpsutil_net_io_counters as select * from  (
 	with t as (select *, row_number() over (partition by iface order by snap) from psutil_net_io_counters)
 	select	to_char(t2.snap, 'YYYYMMDDHH24MISSMS')  "timestamp", 
@@ -183,7 +188,8 @@ CREATE TABLE psutil_processes(
 	texts bigint,
 	lib bigint,
 	datas bigint,
-	dirty bigint);
+	dirty bigint,
+	primary key(snap, pid));
 CREATE OR REPLACE VIEW vpsutil_processes as select * from  (
 	with t as (select *, row_number() over (partition by pid, create_time order by snap) from psutil_processes)
 	select	to_char(t2.snap, 'YYYYMMDDHH24MISSMS')  "timestamp", 
@@ -217,12 +223,14 @@ $$ language plpython3u;
 
 DROP TABLE IF EXISTS kpg_stat_activity;
 CREATE TABLE kpg_stat_activity AS SELECT current_timestamp snap, 1 snap_frequency, * FROM pg_stat_activity LIMIT 0;
+ALTER TABLE kpg_stat_activity ADD primary key(snap, pid);
 CREATE OR REPLACE VIEW vkpg_stat_activity as 
 	select	to_char(snap, 'YYYYMMDDHH24MISSMS')  "timestamp", hash(query) hash, * from kpg_stat_activity;
 GRANT SELECT ON vkpg_stat_activity TO kairos;
 
 DROP TABLE IF EXISTS kpg_stat_database;
 CREATE TABLE kpg_stat_database AS SELECT current_timestamp snap, * FROM pg_stat_database LIMIT 0;
+ALTER TABLE kpg_stat_database ADD primary key(snap, datname);
 CREATE OR REPLACE VIEW vkpg_stat_database as select * from  (
 	with t as (select *, row_number() over (partition by datname order by snap) from kpg_stat_database)
 	select	to_char(t2.snap, 'YYYYMMDDHH24MISSMS')  "timestamp", 
